@@ -9,12 +9,13 @@ Bilby is a minimalist library to generate texture and rendering information for 
   + Allow user to specify the max number of glyphs recorded when rendering text including growing and shrinking
 - Interface
   + Lifecycle
-    - Create instance with a dedicated texture instance including a buffer of n desired information structs
-    - Destroy instance with texture and info buffer
+    - [OK] Create instance with a dedicated texture instance including a buffer of n desired information structs
+    - [OK] Destroy instance with texture and info buffer
   + Setting
     - Font height to nearest multiple of pixel font height
     - Horizontal and vertical glyph distance
     - Max number of info buffer length + re-allocation 
+    - Spaces per tab
   + Queries
     - get texture information: pointer; pixels; size of; components, etc.
     - current font height
@@ -29,12 +30,16 @@ Bilby is a minimalist library to generate texture and rendering information for 
   + Constants
     - ...
   + Additional functionality
+    - specify some debugging character to render when non-supported chars in renderdeline string
+      that is optionally replaced with some other character. This debugging thing can be disabled or enabled?
     - Generate background information to draw glyphs over
     - Capping render info for:
       + number of glyphs
       + max width and/or height (pixels and glyphs) i.e. AABB
+    - Extended ASCII character set
 
 - Documentation and logic
+  + How to use the code, what to link, where to find the required files
   + Which OpenGL texture type to use - 8-bit unsigned RGBA
   + What an instance is
   + Explain the texture, scaling and the sizing of the texture etc.
@@ -45,6 +50,8 @@ Bilby is a minimalist library to generate texture and rendering information for 
   + Example of the in-memory texture
 
 - Q & A
+  + Extended VS normal ASCII table
+  + How to enforce bad arguments, return values and give the user error messages?
   + Which C standard to use? Pick the oldest one that makes sense, probably ANSI-C
   + Specify the coordinate system y-axis for the texture and for the rendering info.
     Provide both options instead of deciding?
@@ -54,9 +61,31 @@ Bilby is a minimalist library to generate texture and rendering information for 
   + How to enable styled rendering like underline; lin1e-through; background color; foreground color; borders and negatives?
 
 - Finishing up
+  + Add handle to Monogram like Ascii Pngfy as source of inspiration
   + Handle all TODOs
+  + Remove working and builds directory
   + Clean documenation that is enforced by automatic tests
   + Automatic test suite: Interface; Memory leaks; Different platforms
+
+- Encoding the character set
+For now only a character-subset of the non-extended ASCII character set is supported:
+  + Printable characters   - Printed using a pattern in the texture with cursor side-effects
+    - codse in decimal range [32; 126]
+  + Control characters     - Only for the side effects
+    - Horizontal tab      : Advances cursor x by teh number of spaces specified per tab
+    - Line feed / newline : Advances cursor y to next line by the vertical spacing set and resets th
+                            cursor x to the base position
+    - Space               : Advances cursor x by the amount of horizontal spacing set
+  + Unsupported characters - Not currently printed nor used for cursor side effects
+
+- Testing
+  + zero and non-zero positioning works as expected on single and multiple lines
+  + no render info when nothing to actually draw
+  + Test single glyp design size requirements
+  + Memory texture
+    - has single pixel of vertical and horizontal spacing to avoid texture bleeding
+    - has opaque color set pixels
+    - has transparent color for non-set pixels
 
 
 ## Example usage
