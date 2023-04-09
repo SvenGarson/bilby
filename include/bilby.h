@@ -272,7 +272,7 @@ struct bilby_instance * bilby_create_instance(void)
 
 void bilby_destroy_instance(struct bilby_instance ** pp_instance)
 {
-  if (pp_instance == NULL)
+  if (pp_instance == NULL || *pp_instance)
     return;
 
   /* TODO-GS: Deallocate all allocated resources for the given instance */

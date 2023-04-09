@@ -41,8 +41,8 @@ Bilby is a minimalist library to generate texture and rendering information for 
 - High level implementation plan
   + [OK] Prepare some glyph designs
   + [OK] Associate glyph designs with ascii codes i.e. get design for ascii code
-  + Build an RGBA texture for all printable characters and maybe one debuggin character
-  + Associate an ascii code to a certain texture coordinate range
+  + [OK] Build an RGBA texture for all printable characters and maybe one debuggin character
+  + [OK] Associate an ascii code to a certain texture coordinate range
   + Parse a string into rendering information in terms of triangles; texture data etc.
   + Build out interface to something usable
   + Test and finalize
