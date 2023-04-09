@@ -88,8 +88,9 @@ struct bilby_glyph_info {
   struct bilby_region2d texcoords_region;
 };
 
-/* Private shared bilby state - TODO-GS: Move to source */
+/* Private state shared by instances - TODO-GS: Move to source */
 struct bilby_glyph_info ascii_glyph_info[BILBY_ASCII_CHARACTERS];
+struct bilby_texture_info texture_info;
 
 /* Private helper functions - TODO-GS: Move to source file */
 
@@ -240,6 +241,9 @@ struct bilby_instance * bilby_create_instance(void)
       }
     }
 
+    /* Keep track of generated texture attributes - TODO-GS: Return texture data in the bilby instance and try using OpenGL */
+    ???
+
     /* TODO-GS: Output texture as text for debugging */
     for (int tex_row = 0; tex_row < TEXTURE_HEIGHT; tex_row++)
     {
@@ -254,7 +258,6 @@ struct bilby_instance * bilby_create_instance(void)
           putchar('.');
       }
     }
-
 
     /* Success - Mark bilby internals as initialized */
     bilby_initialized = BILBY_TRUE;
