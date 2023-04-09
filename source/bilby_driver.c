@@ -8,10 +8,11 @@ int main(void)
 {
   /* Develop bilby */
   struct bilby_instance * p_instance = bilby_create_instance();
-  printf("\nInstance: %s", p_instance == NULL ? "NULL" : "OK");
+  printf("\nInstance : %s", p_instance == NULL ? "NULL" : "OK");
   bilby_destroy_instance(&p_instance);
-  printf("\nInstance: %s", p_instance == NULL ? "OK" : "Not destroyed");
+  printf("\nDestroyal: %s", p_instance == NULL ? "OK" : "Not destroyed");
   printf("\n\n");
+
 
   /* Return to OS successfully */
   return 0;

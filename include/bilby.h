@@ -4,6 +4,17 @@
 /* Includes */
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
+
+/* Defines */
+#define BILBY_ASCII_CHARACTERS (256)
+
+/* Constants */
+const int BILBY_SMALLEST_ASCII_CODE = 0;
+const int BILBY_LARGEST_ASCII_CODE = BILBY_ASCII_CHARACTERS - 1;
+const int BILBY_GLYPH_DESIGN_WIDTH = 5;
+const int BILBY_GLYPH_DESIGN_HEIGHT = 9;
+const int BILBY_GLYPH_DESIGN_SIZE = BILBY_GLYPH_DESIGN_WIDTH * BILBY_GLYPH_DESIGN_HEIGHT;
 
 /* Glyph designs */
 const char * P_GLYPH_DESIGN_A = ".###."
@@ -37,6 +48,11 @@ const char * P_GLYPH_DESIGN_C = ".###."
                                 ".....";
 
 /* Datatypes */
+enum bilby_bool { 
+  BILBY_FALSE = 0,
+  BILBY_TRUE = 1
+};
+
 struct bilby_texture_info {
   unsigned char * p_pixels;
   int width;
@@ -54,8 +70,10 @@ struct bilby_instance {
       - ... ?
   */
   struct bilby_texture_info texture_info;
-
 };
+
+/* Private shared bilby state - TODO-GS: Move to source */
+const char * ascii_glyph_designs[BILBY_ASCII_CHARACTERS];
 
 /* Private helper functions - TODO-GS: Move to source file */
 
@@ -63,18 +81,158 @@ struct bilby_instance {
 /* Interface function prototypes - Lifecycle */
 struct bilby_instance * bilby_create_instance(void)
 {
+  /* Initialize the ascii-glyph mapping the the first time */
+  static enum bilby_bool bilby_initialized = BILBY_FALSE;
+  if (bilby_initialized == BILBY_FALSE)
+  {
+    /* Initialize all glyph designs */
+    for (int ascii_code = BILBY_SMALLEST_ASCII_CODE; ascii_code < BILBY_LARGEST_ASCII_CODE; ascii_code++)
+    {
+      ascii_glyph_designs[ascii_code] = NULL;
+    }
+
+    /* Register printable ascii characters to glyph designs */
+    ascii_glyph_designs['A'] = P_GLYPH_DESIGN_A;
+    ascii_glyph_designs['B'] = P_GLYPH_DESIGN_B;
+    ascii_glyph_designs['C'] = P_GLYPH_DESIGN_C;
+
+    /* Build the ascii glyph texture */
+    /* TODO-GS: Plot new glyph cell into texture for every printable character */
+    /*
+        To avoid texture bleeding, every glyph design region is surrounded by a single pixel border
+        that is not used for glyph texture data.
+
+        1  5  1  5  1  5  1
+        +-----+-----+-----+ 1
+        |.###.|####.|.###.|
+        |#...#|#...#|#...#|
+        |#...#|#...#|#....|
+        |#...#|####.|#....|
+        |#####|#...#|#....|  9
+        |#...#|#...#|#...#|
+        |#...#|####.|.###.|
+        |.....|.....|.....|
+        |.....|.....|.....|
+        +-----+-----+-----+ 1
+
+    */
+    const int GLYPH_DESIGN_PADDING = 1;
+    const int HORIZONTAL_TEXTURE_GLYPHS = 25;
+    const int VERTICAL_TEXTURE_GLYPHS = 4;
+    const int TEXTURE_WIDTH = HORIZONTAL_TEXTURE_GLYPHS * (BILBY_GLYPH_DESIGN_WIDTH + GLYPH_DESIGN_PADDING) + GLYPH_DESIGN_PADDING;
+    const int TEXTURE_HEIGHT = VERTICAL_TEXTURE_GLYPHS * (BILBY_GLYPH_DESIGN_HEIGHT + GLYPH_DESIGN_PADDING) + GLYPH_DESIGN_PADDING;
+    const int TEXTURE_TEXELS = TEXTURE_WIDTH * TEXTURE_HEIGHT;
+    const int TEXTURE_COLOR_COMPONENTS = 4;
+
+    /* TODO-GS: Enforce a power of two texture size -> check typical rendering API requirements */
+    /* Allocate and initialize the pixel data as fully transparent plane */
+    const size_t TEXTURE_PIXEL_DATA_SIZE_IN_BYTES = sizeof(unsigned char) * TEXTURE_COLOR_COMPONENTS * TEXTURE_TEXELS;    
+    unsigned char * p_texture_pixels = malloc(TEXTURE_PIXEL_DATA_SIZE_IN_BYTES);
+    if (p_texture_pixels == NULL)
+      return NULL;
+
+    unsigned char * p_pixel_rgba = NULL;
+    for (int pixel_index = 0; pixel_index < TEXTURE_TEXELS; pixel_index++)
+    {
+      p_pixel_rgba = p_texture_pixels + (pixel_index * TEXTURE_COLOR_COMPONENTS);
+      p_pixel_rgba[0] = 0x00; /* Red */
+      p_pixel_rgba[1] = 0x00; /* Green */
+      p_pixel_rgba[2] = 0x00; /* Blue */
+      p_pixel_rgba[3] = 0x00; /* Alpha */
+    }
+
+    /* Initialized glyph texture - Now plot the glyph designs for all supported, printable characters */
+    int texture_glyph_cell_x = 0;
+    int texture_glyph_cell_y = 0;
+    for (int ascii_code = BILBY_SMALLEST_ASCII_CODE; ascii_code < BILBY_LARGEST_ASCII_CODE; ascii_code++)
+    {
+      /* Ignore ascii codes on non-printable characters for texture generation */
+      const char * p_glyph_design = ascii_glyph_designs[ascii_code];
+      if (p_glyph_design == NULL)
+        continue;
+
+      /* Make sure the glyph design has the correct length */
+      /* TODO-GS: If not, plot some debugging glyph instead? */
+      const size_t actual_glyph_design_size = strlen(ascii_glyph_designs[ascii_code]);
+      if (actual_glyph_design_size != (unsigned int)BILBY_GLYPH_DESIGN_SIZE)
+      {
+        printf(
+          "\nAscii code '%d' glyph has '%d' instead of '%d' design points!",
+          ascii_code,
+          (int)actual_glyph_design_size,
+          BILBY_GLYPH_DESIGN_SIZE
+        );
+        continue;
+      }
+
+      /* Make sure there is a vacant texture glyph cell */
+      if (texture_glyph_cell_x >= HORIZONTAL_TEXTURE_GLYPHS || texture_glyph_cell_y >= VERTICAL_TEXTURE_GLYPHS)
+      {
+        printf("\nNo more texture glyph cell at glyph coordinate [%-3d, %-3d]", texture_glyph_cell_x, texture_glyph_cell_y);
+        break;
+      }
+
+      /* Ascii code is printable character with a valid design - Plot it into the texture glyph cell */
+      const int glyph_texel_min_x = texture_glyph_cell_x * (BILBY_GLYPH_DESIGN_WIDTH + GLYPH_DESIGN_PADDING) + 1;
+      const int glyph_texel_min_y = texture_glyph_cell_y * (BILBY_GLYPH_DESIGN_HEIGHT + GLYPH_DESIGN_PADDING) + 1;
+      const int glyph_texel_max_x = glyph_texel_min_x + (BILBY_GLYPH_DESIGN_WIDTH - 1);
+      const int glyph_texel_max_y = glyph_texel_min_y + (BILBY_GLYPH_DESIGN_HEIGHT - 1);
+
+      /* Iterate the glyph cell texture region and plot every set texel from glyph design */
+      int glyph_design_char_index = 0;
+      for (int glyph_plot_y = glyph_texel_min_y; glyph_plot_y <= glyph_texel_max_y; glyph_plot_y++)
+      {
+        for (int glyph_plot_x = glyph_texel_min_x; glyph_plot_x <= glyph_texel_max_x; glyph_plot_x++)
+        {
+          const char * p_glyph_design_char = p_glyph_design + glyph_design_char_index++;
+          if ('#' != *p_glyph_design_char)
+            continue;
+
+          const int glyph_plot_texel_index = (glyph_plot_y * TEXTURE_WIDTH) + glyph_plot_x;
+          unsigned char * p_glyph_plot_texel = p_texture_pixels + (glyph_plot_texel_index * TEXTURE_COLOR_COMPONENTS);
+          p_glyph_plot_texel[0] = 0xFF; /* Red */
+          p_glyph_plot_texel[1] = 0xFF; /* Green */
+          p_glyph_plot_texel[2] = 0xFF; /* Blue */
+          p_glyph_plot_texel[3] = 0xFF; /* Alpha */
+        }
+      }
+
+      /* Choose next texture glyph cell */
+      texture_glyph_cell_x++;
+      if (texture_glyph_cell_x >= HORIZONTAL_TEXTURE_GLYPHS)
+      {
+        texture_glyph_cell_x = 0;
+        texture_glyph_cell_y++;
+      }
+    }
+
+    /* TODO-GS: Output texture as text for debugging */
+    for (int tex_row = 0; tex_row < TEXTURE_HEIGHT; tex_row++)
+    {
+      printf("\n");
+      for (int tex_col = 0; tex_col < TEXTURE_WIDTH; tex_col++)
+      {
+        const int texel_index = (tex_row * TEXTURE_WIDTH) + tex_col;
+        unsigned char * p_texel_rgba = p_texture_pixels + (texel_index * TEXTURE_COLOR_COMPONENTS);
+        if (p_texel_rgba[3] == 0xFF)
+          putchar('#');
+        else
+          putchar('.');
+      }
+    }
+
+
+    /* Success - Mark bilby internals as initialized */
+    bilby_initialized = BILBY_TRUE;
+  }
+
   struct bilby_instance * p_bilby_instance = malloc(sizeof(struct bilby_instance));
   if (p_bilby_instance == NULL)
     return NULL;
 
-  /* Generate textures based on character set */
-  /* TODO-GS: Initialize a private static array to store the ascii to glyph mapping in the translation unit */
+  /* TODO-GS: Initialize the rest of the bilby instance */
 
-
-  /* TODO-GS: Initialize new texture instance texture information */
-
-  /* TODO-GS: Initialize the rest of the instance */
-
+  /* Success - Return established bilby instance */
   return p_bilby_instance;
 }
 
@@ -84,6 +242,7 @@ void bilby_destroy_instance(struct bilby_instance ** pp_instance)
     return;
 
   /* TODO-GS: Deallocate all allocated resources for the given instance */
+  /* Texture; caches; etc. but how to deallocate private, static resources without another call? Associate to instance anyway? */
   free(*pp_instance);
   *pp_instance = NULL;
 }

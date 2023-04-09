@@ -38,6 +38,20 @@ Bilby is a minimalist library to generate texture and rendering information for 
       + max width and/or height (pixels and glyphs) i.e. AABB
     - Extended ASCII character set
 
+- High level implementation plan
+  + [OK] Prepare some glyph designs
+  + [OK] Associate glyph designs with ascii codes i.e. get design for ascii code
+  + Build an RGBA texture for all printable characters and maybe one debuggin character
+  + Associate an ascii code to a certain texture coordinate range
+  + Parse a string into rendering information in terms of triangles; texture data etc.
+  + Build out interface to something usable
+  + Test and finalize
+
+- Decisions
+  + External buffer VS single, per isntance buffer for render caching
+  + Iterator vs simple struct to iterate the instances as read-only alternative?
+    Iterators will be annoying?
+
 - Documentation and logic
   + How to use the code, what to link, where to find the required files
   + Which OpenGL texture type to use - 8-bit unsigned RGBA
@@ -61,6 +75,7 @@ Bilby is a minimalist library to generate texture and rendering information for 
   + How to enable styled rendering like underline; lin1e-through; background color; foreground color; borders and negatives?
 
 - Finishing up
+  + Lint the project and make sure spacing and indentation works properly
   + Add handle to Monogram like Ascii Pngfy as source of inspiration
   + Handle all TODOs
   + Remove working and builds directory
