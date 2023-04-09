@@ -53,6 +53,7 @@ enum bilby_bool {
   BILBY_TRUE = 1
 };
 
+/* TODO-GS: Return the following struct as texture information to upload or use offline */
 struct bilby_texture_info {
   unsigned char * p_pixels;
   int width;
@@ -72,8 +73,23 @@ struct bilby_instance {
   struct bilby_texture_info texture_info;
 };
 
+struct bilby_vec2f {
+  float x;
+  float y;
+};
+
+struct bilby_region2d {
+  struct bilby_vec2f min;
+  struct bilby_vec2f max;
+};
+
+struct bilby_glyph_info {
+  const char * p_glyph_design;
+  struct bilby_region2d texcoords_region;
+};
+
 /* Private shared bilby state - TODO-GS: Move to source */
-const char * ascii_glyph_designs[BILBY_ASCII_CHARACTERS];
+struct bilby_glyph_info ascii_glyph_info[BILBY_ASCII_CHARACTERS];
 
 /* Private helper functions - TODO-GS: Move to source file */
 
@@ -88,13 +104,14 @@ struct bilby_instance * bilby_create_instance(void)
     /* Initialize all glyph designs */
     for (int ascii_code = BILBY_SMALLEST_ASCII_CODE; ascii_code < BILBY_LARGEST_ASCII_CODE; ascii_code++)
     {
-      ascii_glyph_designs[ascii_code] = NULL;
+      struct bilby_glyph_info * p_glyph_info = ascii_glyph_info + ascii_code;
+      p_glyph_info->p_glyph_design = NULL;
     }
 
     /* Register printable ascii characters to glyph designs */
-    ascii_glyph_designs['A'] = P_GLYPH_DESIGN_A;
-    ascii_glyph_designs['B'] = P_GLYPH_DESIGN_B;
-    ascii_glyph_designs['C'] = P_GLYPH_DESIGN_C;
+    ascii_glyph_info['A'].p_glyph_design = P_GLYPH_DESIGN_A;
+    ascii_glyph_info['B'].p_glyph_design = P_GLYPH_DESIGN_B;
+    ascii_glyph_info['C'].p_glyph_design = P_GLYPH_DESIGN_C;
 
     /* Build the ascii glyph texture */
     /* TODO-GS: Plot new glyph cell into texture for every printable character */
@@ -116,7 +133,7 @@ struct bilby_instance * bilby_create_instance(void)
         +-----+-----+-----+ 1
 
     */
-    const int GLYPH_DESIGN_PADDING = 1;
+    const int GLYPH_DESIGN_PADDING = 1; /* TODO-GS: Padding not working as expected */
     const int HORIZONTAL_TEXTURE_GLYPHS = 25;
     const int VERTICAL_TEXTURE_GLYPHS = 4;
     const int TEXTURE_WIDTH = HORIZONTAL_TEXTURE_GLYPHS * (BILBY_GLYPH_DESIGN_WIDTH + GLYPH_DESIGN_PADDING) + GLYPH_DESIGN_PADDING;
@@ -147,13 +164,13 @@ struct bilby_instance * bilby_create_instance(void)
     for (int ascii_code = BILBY_SMALLEST_ASCII_CODE; ascii_code < BILBY_LARGEST_ASCII_CODE; ascii_code++)
     {
       /* Ignore ascii codes on non-printable characters for texture generation */
-      const char * p_glyph_design = ascii_glyph_designs[ascii_code];
-      if (p_glyph_design == NULL)
+      struct bilby_glyph_info * const p_glyph_info = ascii_glyph_info + ascii_code;
+      if (p_glyph_info->p_glyph_design == NULL)
         continue;
 
       /* Make sure the glyph design has the correct length */
       /* TODO-GS: If not, plot some debugging glyph instead? */
-      const size_t actual_glyph_design_size = strlen(ascii_glyph_designs[ascii_code]);
+      const size_t actual_glyph_design_size = strlen(ascii_glyph_info[ascii_code].p_glyph_design);
       if (actual_glyph_design_size != (unsigned int)BILBY_GLYPH_DESIGN_SIZE)
       {
         printf(
@@ -173,6 +190,7 @@ struct bilby_instance * bilby_create_instance(void)
       }
 
       /* Ascii code is printable character with a valid design - Plot it into the texture glyph cell */
+      /* TODO-GS: Make padding work properly and get rid of the magic ones - Padding should work automatically with the single constant */
       const int glyph_texel_min_x = texture_glyph_cell_x * (BILBY_GLYPH_DESIGN_WIDTH + GLYPH_DESIGN_PADDING) + 1;
       const int glyph_texel_min_y = texture_glyph_cell_y * (BILBY_GLYPH_DESIGN_HEIGHT + GLYPH_DESIGN_PADDING) + 1;
       const int glyph_texel_max_x = glyph_texel_min_x + (BILBY_GLYPH_DESIGN_WIDTH - 1);
@@ -184,10 +202,12 @@ struct bilby_instance * bilby_create_instance(void)
       {
         for (int glyph_plot_x = glyph_texel_min_x; glyph_plot_x <= glyph_texel_max_x; glyph_plot_x++)
         {
-          const char * p_glyph_design_char = p_glyph_design + glyph_design_char_index++;
+          /* Only plot the set design characters */
+          const char * p_glyph_design_char = p_glyph_info->p_glyph_design + glyph_design_char_index++;
           if ('#' != *p_glyph_design_char)
             continue;
 
+          /* Plot pixel into texture */
           const int glyph_plot_texel_index = (glyph_plot_y * TEXTURE_WIDTH) + glyph_plot_x;
           unsigned char * p_glyph_plot_texel = p_texture_pixels + (glyph_plot_texel_index * TEXTURE_COLOR_COMPONENTS);
           p_glyph_plot_texel[0] = 0xFF; /* Red */
@@ -196,6 +216,20 @@ struct bilby_instance * bilby_create_instance(void)
           p_glyph_plot_texel[3] = 0xFF; /* Alpha */
         }
       }
+
+      /* Associate ASCII code to the plotted texture region - TODO-GS: Decide on texture coordinate system here and texte y-axis */
+      p_glyph_info->texcoords_region.min.x = ((float)glyph_texel_min_x + 0.5f) / (float)TEXTURE_WIDTH;
+      p_glyph_info->texcoords_region.min.y = ((float)glyph_texel_min_y + 0.5f) / (float)TEXTURE_HEIGHT;
+      p_glyph_info->texcoords_region.max.x = ((float)glyph_texel_max_x + 0.5f) / (float)TEXTURE_WIDTH;
+      p_glyph_info->texcoords_region.max.y = ((float)glyph_texel_max_y + 0.5f) / (float)TEXTURE_HEIGHT;
+
+      /* TODO-GS: Debugging information about glyph generation */
+      printf("\n\nInfo character plotting %c", ascii_code);
+      printf("\n\tTexture  : [%-5d, %-5d]", TEXTURE_WIDTH, TEXTURE_HEIGHT);
+      printf("\n\tTexel min: [%-5d, %-5d]", glyph_texel_min_x, glyph_texel_min_y);
+      printf("\n\tTexel max: [%-5d, %-5d]", glyph_texel_max_x, glyph_texel_max_y);
+      printf("\n\tTxCrd min: [%-5f, %-5f]", p_glyph_info->texcoords_region.min.x, p_glyph_info->texcoords_region.min.y);
+      printf("\n\tTxCrd max: [%-5f, %-5f]", p_glyph_info->texcoords_region.max.x, p_glyph_info->texcoords_region.max.y);
 
       /* Choose next texture glyph cell */
       texture_glyph_cell_x++;
