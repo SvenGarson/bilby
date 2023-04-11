@@ -8,7 +8,7 @@
 #include <GL/freeglut.h>
 
 /* Constants */
-const float CANVAS_REGION = 100.0f;
+const float CANVAS_REGION = 200.0f;
 
 /* State */
 struct bilby_instance * p_instance = NULL;
@@ -27,17 +27,28 @@ void SetupRC(void)
   GLuint bilby_texture_handle;
   glGenTextures(1, &bilby_texture_handle);
   glBindTexture(GL_TEXTURE_2D, bilby_texture_handle);
-
-  const unsigned char pixels[] = {
-    0xFF, 0x00, 0x00, 0xFF,
-    0x00, 0xFF, 0x00, 0xFF,
-    0x00, 0x00, 0xFF, 0xFF,
-    0xFF, 0x00, 0xFF, 0xFF,
-  };
-
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+
+  /* Blending */
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); 
+
+  /* Check texture */
+  const struct bilby_texture_info * const p_tex_info = p_instance->p_texture_info;
+
+  /* Uploade texture */
+  glTexImage2D(
+    GL_TEXTURE_2D,
+    0,
+    GL_RGBA,
+    p_instance->p_texture_info->width,
+    p_instance->p_texture_info->height,
+    0,
+    GL_RGBA,
+    GL_UNSIGNED_BYTE,
+    p_instance->p_texture_info->p_pixels
+  );
 }
 
 void cleanup(void)
@@ -87,16 +98,16 @@ void RenderScene(void)
   const float inset = 10.0f;
   glBegin(GL_QUADS);
     glTexCoord2f(0.0f, 1.0f);
-    glVertex2f(-CANVAS_REGION + inset, -CANVAS_REGION + inset);
+    glVertex2f(0.0f, 0.0f);
 
     glTexCoord2f(1.0f, 1.0f);
-    glVertex2f( CANVAS_REGION - inset, -CANVAS_REGION + inset);
+    glVertex2f(p_instance->p_texture_info->width, 0.0f);
 
     glTexCoord2f(1.0f, 0.0f);
-    glVertex2f( CANVAS_REGION - inset,  CANVAS_REGION - inset);
+    glVertex2f(p_instance->p_texture_info->width, p_instance->p_texture_info->height);
 
     glTexCoord2f(0.0f, 0.0f);
-    glVertex2f(-CANVAS_REGION + inset,  CANVAS_REGION - inset);
+    glVertex2f(0.0f, p_instance->p_texture_info->height);
   glEnd();
 
   /* Swap buffers */
@@ -106,6 +117,7 @@ void RenderScene(void)
 void TimerFunction(int value)
 {
   /* Re-draw the scene */
+  ListOpenglErrors("OpenGL errors:");
   glutPostRedisplay();
   glutTimerFunc(33, TimerFunction, 1);
 }
@@ -114,10 +126,7 @@ void ListOpenglErrors(const char * const p_tag)
 {
   GLenum error = glGetError();
   if (error == GL_NO_ERROR)
-  {
-    printf("\nNo OpenGL errors tagged '%s'\n", p_tag);
     return;
-  }
 
   printf("\nOpenGL errors tagged '%s'", p_tag);
   int error_index = 0;

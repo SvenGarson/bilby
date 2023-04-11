@@ -70,7 +70,8 @@ struct bilby_instance {
       - settings
       - ... ?
   */
-  struct bilby_texture_info texture_info;
+  
+  struct bilby_texture_info * p_texture_info;
 };
 
 struct bilby_vec2f {
@@ -89,6 +90,7 @@ struct bilby_glyph_info {
 };
 
 /* Private state shared by instances - TODO-GS: Move to source */
+/* TODO-GS: How to deallocate - Has to be for each instance to know when to deallocate */
 struct bilby_glyph_info ascii_glyph_info[BILBY_ASCII_CHARACTERS];
 struct bilby_texture_info texture_info;
 
@@ -144,19 +146,18 @@ struct bilby_instance * bilby_create_instance(void)
 
     /* TODO-GS: Enforce a power of two texture size -> check typical rendering API requirements */
     /* Allocate and initialize the pixel data as fully transparent plane */
-    const size_t TEXTURE_PIXEL_DATA_SIZE_IN_BYTES = sizeof(unsigned char) * TEXTURE_COLOR_COMPONENTS * TEXTURE_TEXELS;    
+    const size_t TEXTURE_PIXEL_DATA_SIZE_IN_BYTES = sizeof(unsigned char) * TEXTURE_COLOR_COMPONENTS * TEXTURE_TEXELS;
     unsigned char * p_texture_pixels = malloc(TEXTURE_PIXEL_DATA_SIZE_IN_BYTES);
     if (p_texture_pixels == NULL)
       return NULL;
 
-    unsigned char * p_pixel_rgba = NULL;
     for (int pixel_index = 0; pixel_index < TEXTURE_TEXELS; pixel_index++)
     {
-      p_pixel_rgba = p_texture_pixels + (pixel_index * TEXTURE_COLOR_COMPONENTS);
+      unsigned char * p_pixel_rgba = p_texture_pixels + (pixel_index * TEXTURE_COLOR_COMPONENTS);
       p_pixel_rgba[0] = 0x00; /* Red */
       p_pixel_rgba[1] = 0x00; /* Green */
       p_pixel_rgba[2] = 0x00; /* Blue */
-      p_pixel_rgba[3] = 0x00; /* Alpha */
+      p_pixel_rgba[3] = 0xFF; /* Alpha TODO-GS: Reset to transparent after debugging */
     }
 
     /* Initialized glyph texture - Now plot the glyph designs for all supported, printable characters */
@@ -241,8 +242,13 @@ struct bilby_instance * bilby_create_instance(void)
       }
     }
 
-    /* Keep track of generated texture attributes - TODO-GS: Return texture data in the bilby instance and try using OpenGL */
-    ???
+    /* Keep track of generated texture attributes */
+    texture_info.p_pixels = p_texture_pixels;
+    texture_info.width = TEXTURE_WIDTH;
+    texture_info.height = TEXTURE_HEIGHT;
+    texture_info.color_components_per_pixel = TEXTURE_COLOR_COMPONENTS;
+    texture_info.size_in_bytes = TEXTURE_PIXEL_DATA_SIZE_IN_BYTES;
+    texture_info.number_of_pixels = TEXTURE_TEXELS;
 
     /* TODO-GS: Output texture as text for debugging */
     for (int tex_row = 0; tex_row < TEXTURE_HEIGHT; tex_row++)
@@ -268,6 +274,7 @@ struct bilby_instance * bilby_create_instance(void)
     return NULL;
 
   /* TODO-GS: Initialize the rest of the bilby instance */
+  p_bilby_instance->p_texture_info = &texture_info;
 
   /* Success - Return established bilby instance */
   return p_bilby_instance;
@@ -285,9 +292,9 @@ void bilby_destroy_instance(struct bilby_instance ** pp_instance)
 }
 
 /* Interface function prototypes - Queries */
-void bilby_rgba_texture(struct bilby_instance * p_instance)
+const struct bilby_texture_info * bilby_texture_info(struct bilby_instance * p_instance)
 {
-
+  return p_instance->p_texture_info;
 }
 
 #endif
