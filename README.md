@@ -52,10 +52,6 @@ Bilby is a minimalist library to generate texture and rendering information for 
   + Iterator vs simple struct to iterate the instances as read-only alternative?
     Iterators will be annoying?
 
-- Thoughts While working
-  + Add error messages through a mechanism like strerror
-  + Make sure memory is cleaned up properly in the setup sequence when things don't work out
-
 - Documentation and logic
   + How to use the code, what to link, where to find the required files
   + Which OpenGL texture type to use - 8-bit unsigned RGBA
@@ -68,7 +64,19 @@ Bilby is a minimalist library to generate texture and rendering information for 
   + Example of the in-memory texture
 
 - Q & A
-  + Extended VS normal ASCII table
+  + How to map the vertical renndering and texcoords coordinates for the rendering info?
+  + What options to give when non-printable char given to render function?
+    - Provide a debuggin character
+    - Configure if has any effect in terms of rendering and cursor side-effect
+    - Provide a design to use as debugging design? Meeh
+  + How to cache rendering data so that it is most flexible without needing invoke in fixed order?
+    The single instance single buffer approach is maybe not very flexible?
+    Maybe have a new process that populates some information buffer and lets the user decide
+    the size of that buffer anyway per cache object?
+  + How to add error messages?
+    Set error message and provide function like strerror and errno, separate from builtins
+  + Which character set to use?
+    The non-extended ASCII character set.
   + How to enforce bad arguments, return values and give the user error messages?
   + Which C standard to use? Pick the oldest one that makes sense, probably ANSI-C
   + Specify the coordinate system y-axis for the texture and for the rendering info.
@@ -79,6 +87,8 @@ Bilby is a minimalist library to generate texture and rendering information for 
   + How to enable styled rendering like underline; lin1e-through; background color; foreground color; borders and negatives?
 
 - Finishing up
+  + Enforce ansii-C
+  + Make sure memory is cleaned up properly in the setup sequence when things don't work out
   + Lint the project and make sure spacing and indentation works properly
   + Add handle to Monogram like Ascii Pngfy as source of inspiration
   + Handle all TODOs

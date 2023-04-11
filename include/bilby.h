@@ -8,6 +8,7 @@
 
 /* Defines */
 #define BILBY_ASCII_CHARACTERS (256)
+#define BILBY_MAX_GLYPHS_RENDERED (1024)
 
 /* Constants */
 const int BILBY_SMALLEST_ASCII_CODE = 0;
@@ -63,30 +64,41 @@ struct bilby_texture_info {
   int number_of_pixels;
 };
 
+struct bilby_vec2i {
+  int x;
+  int y;
+};
+
 struct bilby_vec2f {
   float x;
   float y;
 };
 
-struct bilby_region2d {
+struct bilby_region2df {
   struct bilby_vec2f min;
   struct bilby_vec2f max;
 };
 
+struct bilby_region2di {
+  struct bilby_vec2i min;
+  struct bilby_vec2i max;
+};
+
 struct bilby_glyph_info {
   const char * p_glyph_design;
-  struct bilby_region2d texcoords_region;
+  struct bilby_region2df texcoords_region;
+};
+
+struct bilby_glyph_render_info {
+  struct bilby_region2di render_region;
+  struct bilby_region2df texcoords_region;
 };
 
 struct bilby_instance {
-  /*
-      - texture into
-      - render info cache
-      - settings
-      - ... ?
-  */
   struct bilby_glyph_info ascii_glyph_info[BILBY_ASCII_CHARACTERS];
   struct bilby_texture_info texture_info;
+  int render_infos_cached;
+  struct bilby_glyph_render_info render_infos[BILBY_MAX_GLYPHS_RENDERED]; /* TODO-GS: Configurable size? */
 };
 
 /* Private helper functions - TODO-GS: Move to source file */
@@ -98,6 +110,9 @@ struct bilby_instance * bilby_create_instance(void)
   struct bilby_instance * p_bilby_instance = malloc(sizeof(struct bilby_instance));
   if (p_bilby_instance == NULL)
     return NULL;
+
+  /* Initialize render cache bilby instance attributes */
+  p_bilby_instance->render_infos_cached = 0;
 
   /* Establish ASCII glyph mapping to specify printable characters */
   for (int ascii_code = BILBY_SMALLEST_ASCII_CODE; ascii_code < BILBY_LARGEST_ASCII_CODE; ascii_code++)
@@ -150,7 +165,7 @@ struct bilby_instance * bilby_create_instance(void)
     p_pixel_rgba[0] = 0x00; /* Red */
     p_pixel_rgba[1] = 0x00; /* Green */
     p_pixel_rgba[2] = 0x00; /* Blue */
-    p_pixel_rgba[3] = 0xFF; /* Alpha TODO-GS: Reset to transparent after debugging */
+    p_pixel_rgba[3] = 0x00; /* Alpha */
   }
 
   /*
@@ -267,6 +282,64 @@ void bilby_destroy_instance(struct bilby_instance ** pp_instance)
 
   /* Set external reference to mark isntance as destroyed */
   *pp_instance = NULL;
+}
+
+/* Interface function prototypes - Generation */
+void bilby_render_text(
+  struct bilby_instance * p_instance,
+  const char * p_text,
+  int base_position_x,
+  int base_position_y
+)
+{
+  /*
+      - Clear buffer
+      - For every char
+        + if printable
+          - add render information at position to buffer
+        + not printable
+          - check configuration -> and maybe render some debuggin thing
+  */
+  if (p_text == NULL)
+    return;
+
+  /* Clear the cache */
+  p_instance->render_infos_cached = 0;
+
+  /* Cache glyph rendering information into the list */
+  const int font_size_multiplier = 10;
+  struct bilby_vec2i glyph_cursor = { base_position_x, base_position_y };
+  for (const char * p_text_character = p_text; *p_text_character; p_text_character++)
+  {
+    /* Stop when render cache is full */
+    if (p_instance->render_infos_cached >= BILBY_MAX_GLYPHS_RENDERED)
+      break;
+
+    /* Generate render info for the character to render */
+    const int ascii_code = (int)*p_text_character;
+    const struct bilby_glyph_info * p_text_character_glyph_info = p_instance->ascii_glyph_info + ascii_code;
+    if (p_text_character_glyph_info->p_glyph_design != NULL)
+    {
+      /* Printable character */
+      struct bilby_glyph_render_info * p_render_info = p_instance->render_infos + p_instance->render_infos_cached++;
+
+      /* Primitive rendering region */
+      p_render_info->render_region.min.x = glyph_cursor.x;
+      p_render_info->render_region.min.y = glyph_cursor.y;
+      p_render_info->render_region.max.x = glyph_cursor.x + (BILBY_GLYPH_DESIGN_WIDTH * font_size_multiplier); /* TODO-GS: Generate correct font-size */
+      p_render_info->render_region.max.y = glyph_cursor.y + (BILBY_GLYPH_DESIGN_HEIGHT * font_size_multiplier);
+
+      /* Texture coordinates */
+      p_render_info->texcoords_region = p_text_character_glyph_info->texcoords_region;
+
+      /* Apply cursor side-effects */
+      glyph_cursor.x += BILBY_GLYPH_DESIGN_WIDTH * font_size_multiplier;
+    }
+    else
+    {
+      /* Non-printable character - TODO-GS: Add some configurable feature here */
+    }
+  }
 }
 
 /* Interface function prototypes - Queries */

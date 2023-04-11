@@ -95,7 +95,7 @@ void RenderScene(void)
   /* Clear framebuffer */
   glClear(GL_COLOR_BUFFER_BIT);
 
-  /* Rendering stuff */
+  /* Rendering the texture */
   const float inset = 10.0f;
   glBegin(GL_QUADS);
     glTexCoord2f(0.0f, 1.0f);
@@ -109,6 +109,26 @@ void RenderScene(void)
 
     glTexCoord2f(0.0f, 0.0f);
     glVertex2f(0.0f, p_tex_info->height);
+  glEnd();
+
+  /* Rendering the text data */
+  bilby_render_text(p_instance, "ABC", 50, 50);
+  glBegin(GL_QUADS);
+  for (int i = 0; i < p_instance->render_infos_cached; i++)
+  {
+    const struct bilby_glyph_render_info * p_render_info = p_instance->render_infos + i;
+    glTexCoord2f(p_render_info->texcoords_region.min.x, p_render_info->texcoords_region.max.y);
+    glVertex2i(p_render_info->render_region.min.x, p_render_info->render_region.min.y);
+
+    glTexCoord2f(p_render_info->texcoords_region.max.x, p_render_info->texcoords_region.max.y);
+    glVertex2i(p_render_info->render_region.max.x, p_render_info->render_region.min.y);
+
+    glTexCoord2f(p_render_info->texcoords_region.max.x, p_render_info->texcoords_region.min.y);
+    glVertex2i(p_render_info->render_region.max.x, p_render_info->render_region.max.y);
+
+    glTexCoord2f(p_render_info->texcoords_region.min.x, p_render_info->texcoords_region.min.y);
+    glVertex2i(p_render_info->render_region.min.x, p_render_info->render_region.max.y);
+  }
   glEnd();
 
   /* Swap buffers */
@@ -153,6 +173,7 @@ int main(int argc, char * argv[])
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
   glutCreateWindow("Learning OpenGL");
+  glutReshapeWindow(1200, 800);
   glutDisplayFunc(RenderScene);
   glutReshapeFunc(ChangeSize);
   glutTimerFunc(33, TimerFunction, 1);
