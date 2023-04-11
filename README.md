@@ -52,6 +52,10 @@ Bilby is a minimalist library to generate texture and rendering information for 
   + Iterator vs simple struct to iterate the instances as read-only alternative?
     Iterators will be annoying?
 
+- Thoughts While working
+  + Add error messages through a mechanism like strerror
+  + Make sure memory is cleaned up properly in the setup sequence when things don't work out
+
 - Documentation and logic
   + How to use the code, what to link, where to find the required files
   + Which OpenGL texture type to use - 8-bit unsigned RGBA

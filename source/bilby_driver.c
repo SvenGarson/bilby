@@ -12,6 +12,7 @@ const float CANVAS_REGION = 200.0f;
 
 /* State */
 struct bilby_instance * p_instance = NULL;
+const struct bilby_texture_info * p_tex_info = NULL;
 
 /* Function definitions */
 void SetupRC(void)
@@ -35,19 +36,19 @@ void SetupRC(void)
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); 
 
   /* Check texture */
-  const struct bilby_texture_info * const p_tex_info = p_instance->p_texture_info;
+  p_tex_info = bilby_texture_info(p_instance);
 
   /* Uploade texture */
   glTexImage2D(
     GL_TEXTURE_2D,
     0,
     GL_RGBA,
-    p_instance->p_texture_info->width,
-    p_instance->p_texture_info->height,
+    p_tex_info->width,
+    p_tex_info->height,
     0,
     GL_RGBA,
     GL_UNSIGNED_BYTE,
-    p_instance->p_texture_info->p_pixels
+    p_tex_info->p_pixels
   );
 }
 
@@ -101,25 +102,17 @@ void RenderScene(void)
     glVertex2f(0.0f, 0.0f);
 
     glTexCoord2f(1.0f, 1.0f);
-    glVertex2f(p_instance->p_texture_info->width, 0.0f);
+    glVertex2f(p_tex_info->width, 0.0f);
 
     glTexCoord2f(1.0f, 0.0f);
-    glVertex2f(p_instance->p_texture_info->width, p_instance->p_texture_info->height);
+    glVertex2f(p_tex_info->width, p_tex_info->height);
 
     glTexCoord2f(0.0f, 0.0f);
-    glVertex2f(0.0f, p_instance->p_texture_info->height);
+    glVertex2f(0.0f, p_tex_info->height);
   glEnd();
 
   /* Swap buffers */
   glutSwapBuffers();
-}
-
-void TimerFunction(int value)
-{
-  /* Re-draw the scene */
-  ListOpenglErrors("OpenGL errors:");
-  glutPostRedisplay();
-  glutTimerFunc(33, TimerFunction, 1);
 }
 
 void ListOpenglErrors(const char * const p_tag)
@@ -134,6 +127,14 @@ void ListOpenglErrors(const char * const p_tag)
     printf("\n\t[%-2d] Error: %s", error_index++, gluErrorString(error));
   } while ((error = glGetError()) != GL_NO_ERROR);
   printf("\n");
+}
+
+void TimerFunction(int value)
+{
+  /* Re-draw the scene */
+  ListOpenglErrors("OpenGL errors:");
+  glutPostRedisplay();
+  glutTimerFunc(33, TimerFunction, 1);
 }
 
 void InputHandler(unsigned char key, int x, int y)
